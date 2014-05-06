@@ -12,6 +12,14 @@
 
 #include <stdlib.h>
 
+// Return codes from compilation attempt.
+enum TFailCode {
+    ESuccess = 0,
+    EFailUsage,
+    EFailCompile,
+    EFailCompilerCreate,
+};
+
 // Sets up the per compile resources.
 void GenerateResources(ShBuiltInResources* resources) {
     ShInitBuiltInResources(resources);
@@ -32,16 +40,20 @@ void GenerateResources(ShBuiltInResources* resources) {
 // Prevent name mangling for easy emscripten linking.
 extern "C" {
 
-// Attempts to compile a fragment shader and returns the error log, if any.
+// Attempts to compile a fragment shader and returns the error log (if any) and
+// translated shader code (if successful).
 // TODO(bckenny): all the options
-const char* TranslateShader(const char* src) {
+int TranslateShader(const char* src, char** errorLog, char** translatedCode) {
+  TFailCode failCode = ESuccess;
+  // TODO(bckenny): fail usage checking?
+
 	int compileOptions = 0;
 	ShHandle compiler = 0;
 
 	char* buffer = 0;
 	size_t bufferLen = 0;
 	ShShaderSpec spec = SH_GLES2_SPEC;
-  ShShaderOutput output = SH_ESSL_OUTPUT; // SH_HLSL11_OUTPUT
+  ShShaderOutput output = SH_HLSL11_OUTPUT; // SH_ESSL_OUTPUT
 
   ShInitialize();
 
@@ -55,17 +67,32 @@ const char* TranslateShader(const char* src) {
   															 &resources);
 
   if (compiler) {
-    ShCompile(compiler, &src, 1, compileOptions);
+    int compiled = ShCompile(compiler, &src, 1, compileOptions);
 
+    // get error log
     ShGetInfo(compiler, SH_INFO_LOG_LENGTH, &bufferLen);
     buffer = (char*) malloc(bufferLen * sizeof(char));
     ShGetInfoLog(compiler, buffer);
+    *errorLog = buffer;
+
+    if (compiled) {
+      // on successful compilation, retrieve translated code
+      ShGetInfo(compiler, SH_OBJECT_CODE_LENGTH, &bufferLen);
+      buffer = (char*) malloc(bufferLen * sizeof(char));
+      ShGetObjectCode(compiler, buffer);
+      *translatedCode = buffer;
+
+    } else {
+      failCode = EFailCompile;
+    }
 
     ShDestruct(compiler);
+  } else {
+    failCode = EFailCompilerCreate;
   }
 
   ShFinalize();
 
-  return buffer;
+  return failCode;
 }
 }
