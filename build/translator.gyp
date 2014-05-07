@@ -1,3 +1,9 @@
+# Copyright 2014 Google Inc. All rights reserved.
+#
+# Use of this source code is governed by a BSD-style
+# license that can be found in the LICENSE file or at
+# https://developers.google.com/open-source/licenses/bsd
+
 {
     'variables':
     {
@@ -38,7 +44,7 @@
     'targets':
     [
         {
-            'target_name': 'translator',
+            'target_name': 'translator.bc',
             'type': 'executable',
             'include_dirs':
             [
@@ -137,6 +143,40 @@
                         }
                     },
                 }],
+            ],
+        },
+
+        {
+            # TODO(bckenny): tie build configurations to optimizations at this stage
+            'target_name': 'translator',
+            'type': 'none',
+            'dependencies': [ 'translator.bc', ],
+            'actions':
+            [
+                {
+                    'action_name': 'js_compile',
+                    'inputs':
+                    [
+                        '<(PRODUCT_DIR)/translator.bc',
+                        '../src/pre-module.js',
+                        '../src/js-bindings.js',
+                    ],
+                    'outputs':
+                    [
+                        '<(PRODUCT_DIR)/translator.js',
+                    ],
+                    'action':
+                    [
+                        # TODO(bckenny): -O3 --closure 1 -s OUTLINING_LIMIT= # (e.g. 50000)
+                        'emcc',
+                        '<(PRODUCT_DIR)/translator.bc',
+                        '-o', '<(PRODUCT_DIR)/translator.js',
+                        '--pre-js', '../src/pre-module.js',
+                        '--post-js', '../src/js-bindings.js',
+                        '-s', "EXPORTED_FUNCTIONS=['_TranslateShader']",
+                    ],
+                    'message': 'Generating JavaScript.',
+                },
             ],
         },
     ],

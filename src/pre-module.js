@@ -6,6 +6,11 @@
  * https://developers.google.com/open-source/licenses/bsd
  */
 
+/**
+ * Module is emscripten's global namespace. Property names must be accessed by
+ * bracket notation to not be eliminated by Closure step.
+ * @type {!Object}
+ */
 var Module = {
 
 };

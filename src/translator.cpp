@@ -45,7 +45,7 @@ extern "C" {
 // TODO(bckenny): all the options
 int TranslateShader(const char* src, char** errorLog, char** translatedCode) {
   TFailCode failCode = ESuccess;
-  // TODO(bckenny): fail usage checking?
+  // TODO(bckenny): expand fail usage checking
 
 	int compileOptions = 0;
 	ShHandle compiler = 0;
@@ -61,7 +61,7 @@ int TranslateShader(const char* src, char** errorLog, char** translatedCode) {
   GenerateResources(&resources);
 
   // resources.FragmentPrecisionHigh = 1;
-  // compileOptions |= SH_OBJECT_CODE;
+  compileOptions |= SH_OBJECT_CODE;
 
   compiler = ShConstructCompiler(SH_FRAGMENT_SHADER, spec, output,
   															 &resources);
@@ -71,16 +71,20 @@ int TranslateShader(const char* src, char** errorLog, char** translatedCode) {
 
     // get error log
     ShGetInfo(compiler, SH_INFO_LOG_LENGTH, &bufferLen);
-    buffer = (char*) malloc(bufferLen * sizeof(char));
-    ShGetInfoLog(compiler, buffer);
-    *errorLog = buffer;
+    if (bufferLen > 1) {
+      buffer = (char*) malloc(bufferLen * sizeof(char));
+      ShGetInfoLog(compiler, buffer);
+      *errorLog = buffer;
+    }
 
     if (compiled) {
       // on successful compilation, retrieve translated code
       ShGetInfo(compiler, SH_OBJECT_CODE_LENGTH, &bufferLen);
-      buffer = (char*) malloc(bufferLen * sizeof(char));
-      ShGetObjectCode(compiler, buffer);
-      *translatedCode = buffer;
+      if (bufferLen > 1) {
+        buffer = (char*) malloc(bufferLen * sizeof(char));
+        ShGetObjectCode(compiler, buffer);
+        *translatedCode = buffer;
+      }
 
     } else {
       failCode = EFailCompile;
@@ -88,6 +92,7 @@ int TranslateShader(const char* src, char** errorLog, char** translatedCode) {
 
     ShDestruct(compiler);
   } else {
+    // TODO(bckenny): when does this happen?
     failCode = EFailCompilerCreate;
   }
 
